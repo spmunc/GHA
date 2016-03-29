@@ -24,8 +24,9 @@ W_t = 2*rand(n,n) - 1;
 
 % Initialize matrix to fill at checkpoints
 innerWs = zeros(n,n,chkpnts+2);
-innerWs(:,:,1) = W_t;
+innerWs(:,:,1) = W_t; % first entry is initial weight matrix
 errors = zeros(chkpnts+2,1);
+errors(1) = norm(W_t*W_t'-eye(n));
 
 % checks
 interval = floor(maxiter/chkpnts);
@@ -35,7 +36,6 @@ curr_chk = 2;
 
 % Run the GHA algorithm
 W_tplus1 = W_t;
-errors(1) = norm(W_t*W_t'-eye(n));
 for iter = 1:maxiter
     
     % Calculate current output
@@ -65,7 +65,6 @@ for iter = 1:maxiter
     % Return if ||W*W' - I|| < tol
     if any(iter == checks)
         innerWs(:,:,curr_chk) = W_t;
-        curr_chk = curr_chk + 1;
         err = norm(W_t*W_t'-eye(n));
         errors(curr_chk) = norm(W_t*W_t'-eye(n));
         if err < tol
@@ -79,6 +78,7 @@ for iter = 1:maxiter
             innerWs(:,:,end) = W_t;
             return
         end
+        curr_chk = curr_chk + 1;
     end
     
 end
