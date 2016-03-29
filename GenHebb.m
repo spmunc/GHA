@@ -1,4 +1,4 @@
-function [W, Y, iters, innerWs] = GenHebb(X, mu, maxiter, tol, chkpnts)
+function [W, Y, iters, innerWs, checks, errors] = GenHebb(X, mu, maxiter, tol, chkpnts)
 % GenHebb runs Sanger's Generalized Hebbian Algorithm to learn all 
 % principle eigenvectors of the correlation matrix of X. 
 %   Inputs:
@@ -6,23 +6,36 @@ function [W, Y, iters, innerWs] = GenHebb(X, mu, maxiter, tol, chkpnts)
 %       mu: learning rate
 %       maxiter: maximum number of learning steps
 %       tol: if ||W*W' - I|| < tol (matrix 2-norm), then the learning stops
-%       chkpnts: learning step numbers at which to record W and check tol
+%       chkpnts: how many times to check in on and record progress
 %                     
 %   Outputs: 
 %       W: weight matrix, where rows are the learned principle eigenvectors
 %       Y: output of network, which are principle components 
 %       iters: number of learning steps actually performed
-%       innerWs: values of W at checkpoints ( size: nxnxlength(chkpnts) )
+%       innerWs: values of W at checkpoints ( size: nxnxlength(checks)+2)
+%       checks: learning steps at which innerWs are
+%       errors: matrix 2 norm of W*W' - I
 
 % Get size of X
 [m,n] = size(X);
+
 % Weight matrix is nxn
 W_t = 2*rand(n,n) - 1;
+
 % Initialize matrix to fill at checkpoints
-innerWs = zeros(n,n,length(chkpnts));
+innerWs = zeros(n,n,chkpnts+2);
+innerWs(:,:,1) = W_t;
+errors = zeros(chkpnts+2,1);
+
+% checks
+interval = floor(maxiter/chkpnts);
+checks = interval:interval:maxiter;
+checks = [0, checks, maxiter];
+curr_chk = 2;
 
 % Run the GHA algorithm
 W_tplus1 = W_t;
+errors(1) = norm(W_t*W_t'-eye(n));
 for iter = 1:maxiter
     
     % Calculate current output
@@ -50,18 +63,29 @@ for iter = 1:maxiter
     
     % If we are at a checkpoint, record W. 
     % Return if ||W*W' - I|| < tol
-    if any(iter == chkpnts)
-        innerWs(:,:,iter) = W_t;
-        if norm(W_t*W_t'-eye(n)) < tol
+    if any(iter == checks)
+        innerWs(:,:,curr_chk) = W_t;
+        curr_chk = curr_chk + 1;
+        err = norm(W_t*W_t'-eye(n));
+        errors(curr_chk) = norm(W_t*W_t'-eye(n));
+        if err < tol
             % Rename for clarity
             W = W_tplus1;
             Y = Y_t;
+            % fill end final W, errors, and iters 
             iters = iter;
+            checks(end) = iter;
+            errors(end) = norm(W_t*W_t'-eye(n));
+            innerWs(:,:,end) = W_t;
             return
         end
     end
     
 end
+
+% fill end final W and errors
+innerWs(:,:,end) = W_t;
+errors(end) = norm(W_t*W_t'-eye(n));
 
 % Rename for clarity
 W = W_tplus1;
